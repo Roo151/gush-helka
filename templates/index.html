@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>חיפוש גוש וחלקה</title>
   <style>
-    /* ── Reset & base ─────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -16,23 +15,10 @@
       padding: 20px;
     }
 
-    /* ── Page header ──────────────────────────────── */
-    header {
-      text-align: center;
-      padding: 32px 16px 24px;
-    }
-    header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #1a4f8a;
-      margin-bottom: 6px;
-    }
-    header p {
-      font-size: 1rem;
-      color: #555;
-    }
+    header { text-align: center; padding: 32px 16px 24px; }
+    header h1 { font-size: 2rem; font-weight: 700; color: #1a4f8a; margin-bottom: 6px; }
+    header p  { font-size: 1rem; color: #555; }
 
-    /* ── Layout ───────────────────────────────────── */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -40,11 +26,8 @@
       max-width: 1000px;
       margin: 0 auto;
     }
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 
-    /* ── Card ─────────────────────────────────────── */
     .card {
       background: #fff;
       border-radius: 14px;
@@ -54,30 +37,13 @@
       flex-direction: column;
       gap: 16px;
     }
-    .card h2 {
-      font-size: 1.2rem;
-      color: #1a4f8a;
-      border-bottom: 2px solid #e3eaf5;
-      padding-bottom: 10px;
-    }
+    .card h2 { font-size: 1.2rem; color: #1a4f8a; border-bottom: 2px solid #e3eaf5; padding-bottom: 10px; }
 
-    /* ── Form controls ────────────────────────────── */
-    .form-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-    label {
-      font-size: .82rem;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 5px;
-    }
+    .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; flex: 1; min-width: 100px; }
+
+    label { font-size: .82rem; font-weight: 600; color: #444; margin-bottom: 5px; }
+
     input[type="text"],
     input[type="number"] {
       border: 1.5px solid #c8d8ea;
@@ -86,12 +52,12 @@
       font-size: .95rem;
       font-family: inherit;
       color: #1a1a2e;
-      direction: ltr;
-      text-align: right;
       transition: border-color .2s;
       width: 100%;
+      direction: rtl;
+      text-align: right;
     }
-    input[type="text"] { direction: rtl; text-align: right; }
+    input[type="number"] { direction: ltr; text-align: right; }
     input:focus { outline: none; border-color: #1a4f8a; }
 
     button {
@@ -107,7 +73,7 @@
       transition: background .2s;
       white-space: nowrap;
     }
-    button:hover { background: #1563b0; }
+    button:hover    { background: #1563b0; }
     button:disabled { background: #8aaccc; cursor: not-allowed; }
 
     button.btn-clear {
@@ -117,7 +83,7 @@
     }
     button.btn-clear:hover { background: #d0dcea; color: #222; }
 
-    /* ── Spinner ──────────────────────────────────── */
+    /* ── Spinner ── */
     .spinner {
       display: none;
       width: 24px; height: 24px;
@@ -129,7 +95,34 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Result box ───────────────────────────────── */
+    /* ── Candidate list ── */
+    .candidates {
+      display: none;
+      border: 1.5px solid #c8d8ea;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .candidates p {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #1a4f8a;
+      padding: 8px 14px;
+      background: #e8f0fa;
+      border-bottom: 1px solid #c8d8ea;
+    }
+    .candidate-item {
+      padding: 10px 14px;
+      font-size: .9rem;
+      cursor: pointer;
+      border-bottom: 1px solid #edf2f8;
+      transition: background .15s;
+    }
+    .candidate-item:last-child { border-bottom: none; }
+    .candidate-item:hover { background: #f0f7ff; }
+    .candidate-item .c-label { font-weight: 600; color: #1a1a2e; }
+    .candidate-item .c-detail { font-size: .78rem; color: #777; margin-top: 2px; }
+
+    /* ── Result box ── */
     .result-box {
       display: none;
       background: #f0f7ff;
@@ -137,14 +130,9 @@
       border-radius: 10px;
       padding: 16px 18px;
     }
-    .result-box.error {
-      background: #fff5f5;
-      border-color: #f5c6c6;
-    }
-    .result-box .error-msg {
-      color: #c0392b;
-      font-weight: 600;
-    }
+    .result-box.error { background: #fff5f5; border-color: #f5c6c6; }
+    .result-box .error-msg { color: #c0392b; font-weight: 600; }
+
     .result-row {
       display: flex;
       gap: 8px;
@@ -153,31 +141,11 @@
       font-size: .92rem;
     }
     .result-row:last-child { border-bottom: none; }
-    .result-label {
-      font-weight: 700;
-      color: #1a4f8a;
-      min-width: 180px;
-    }
+    .result-label { font-weight: 700; color: #1a4f8a; min-width: 190px; }
     .result-value { color: #222; }
-    .result-value.highlight {
-      font-weight: 700;
-      font-size: 1rem;
-    }
-    .committee-note {
-      font-size: .8rem;
-      color: #777;
-      margin-top: 6px;
-      border-top: 1px dashed #c8d8ea;
-      padding-top: 6px;
-    }
+    .result-value.highlight { font-weight: 700; font-size: 1rem; }
 
-    /* ── Data source note ─────────────────────────── */
-    footer {
-      text-align: center;
-      margin-top: 32px;
-      font-size: .8rem;
-      color: #888;
-    }
+    footer { text-align: center; margin-top: 32px; font-size: .8rem; color: #888; }
     footer a { color: #1a4f8a; }
   </style>
 </head>
@@ -197,18 +165,19 @@
     <div class="form-row">
       <div class="field">
         <label for="gush">מספר גוש</label>
-        <input id="gush" type="number" min="1" placeholder="לדוג׳ 7100" />
+        <input id="gush" type="number" min="1" placeholder="לדוג׳ 7100"
+               onkeydown="if(event.key==='Enter') lookupParcel()" />
       </div>
       <div class="field">
         <label for="helka">מספר חלקה</label>
-        <input id="helka" type="number" min="1" placeholder="לדוג׳ 1" />
+        <input id="helka" type="number" min="1" placeholder="לדוג׳ 1"
+               onkeydown="if(event.key==='Enter') lookupParcel()" />
       </div>
       <button id="btn-parcel" onclick="lookupParcel()">חפש</button>
       <button class="btn-clear" onclick="clearCard('parcel')" title="נקה">✕</button>
     </div>
 
     <div class="spinner" id="spin-parcel"></div>
-
     <div class="result-box" id="result-parcel"></div>
   </div>
 
@@ -216,21 +185,28 @@
   <div class="card">
     <h2>📍 חיפוש לפי כתובת</h2>
 
-    <div class="form-row" style="flex-wrap:wrap;">
-      <div class="field" style="flex:1 1 100%;">
-        <label for="address">כתובת (רחוב, מספר, עיר)</label>
-        <input
-          id="address"
-          type="text"
-          placeholder="לדוג׳: רוטשילד 1, תל אביב"
-          onkeydown="if(event.key==='Enter') lookupAddress()"
-        />
+    <div class="form-row">
+      <div class="field" style="flex:2;">
+        <label for="street">רחוב ומספר בית</label>
+        <input id="street" type="text" placeholder="לדוג׳: רוטשילד 1"
+               onkeydown="if(event.key==='Enter') searchAddress()" />
       </div>
-      <button id="btn-address" onclick="lookupAddress()" style="margin-top:6px;">חפש</button>
-      <button class="btn-clear" onclick="clearCard('address')" style="margin-top:6px;" title="נקה">✕</button>
+      <div class="field" style="flex:1.2;">
+        <label for="city">עיר / יישוב</label>
+        <input id="city" type="text" placeholder="לדוג׳: תל אביב"
+               onkeydown="if(event.key==='Enter') searchAddress()" />
+      </div>
+      <button id="btn-address" onclick="searchAddress()">חפש</button>
+      <button class="btn-clear" onclick="clearCard('address')" title="נקה">✕</button>
     </div>
 
     <div class="spinner" id="spin-address"></div>
+
+    <!-- רשימת אפשרויות -->
+    <div class="candidates" id="candidates-address">
+      <p>נמצאו מספר תוצאות — בחרי את הכתובת הנכונה:</p>
+      <div id="candidates-list"></div>
+    </div>
 
     <div class="result-box" id="result-address"></div>
   </div>
@@ -239,20 +215,17 @@
 
 <footer>
   מקורות: <a href="https://open.govmap.gov.il" target="_blank">GovMap Open Data</a>
-  (שירות הסקר הגיאוגרפי של ישראל) &nbsp;|&nbsp;
+  &nbsp;|&nbsp;
+  <a href="https://ags.iplan.gov.il" target="_blank">IPLAN / מנהל התכנון</a>
+  &nbsp;|&nbsp;
   <a href="https://nominatim.openstreetmap.org" target="_blank">Nominatim / OpenStreetMap</a>
-  <br/>
-  נתוני ועדות תכנון מתבססים על שם הרשות המקומית — לאישור מדויק ראי
-  <a href="https://www.mavat.moin.gov.il" target="_blank">מאבת</a>
 </footer>
 
 <script>
-  /* ── helpers ────────────────────────────────── */
+  /* ── helpers ── */
   function setLoading(cardId, on) {
-    const btn = document.getElementById(`btn-${cardId}`);
-    const spin = document.getElementById(`spin-${cardId}`);
-    btn.disabled = on;
-    spin.style.display = on ? "block" : "none";
+    document.getElementById(`btn-${cardId}`).disabled = on;
+    document.getElementById(`spin-${cardId}`).style.display = on ? "block" : "none";
   }
 
   function row(label, value, highlight = false) {
@@ -270,13 +243,40 @@
     box.innerHTML = html;
   }
 
-  /* ── clear card ────────────────────────────── */
+  function buildResultHtml(data, showGush = false) {
+    let html = "";
+    if (showGush) {
+      html += row("גוש",    data.gush,  true);
+      html += row("חלקה",   data.helka, true);
+    }
+    html += row("שם רשות",                   data.locality,           !showGush);
+    html += row("מרחב תכנון (ועדה מקומית)",  data.planning_zone,      !showGush);
+    html += row("סוג מרחב",                  data.planning_zone_type);
+    html += row("סוג רשות",                  data.municipality_type);
+    html += row("מחוז",                       data.district);
+    html += row("נפה",                        data.subdistrict);
+    if (!showGush) {
+      html += row("גוש",   data.gush);
+      html += row("חלקה",  data.helka);
+    }
+    html += row("סטטוס",                     data.status);
+    html += row("שטח רשום (מ\"ר)",           data.area);
+    if (data.geocoded_address) {
+      html += row("כתובת שנמצאה", data.geocoded_address);
+    }
+    return html;
+  }
+
+  /* ── clear card ── */
   function clearCard(cardId) {
-    if (cardId === 'parcel') {
-      document.getElementById("gush").value = "";
+    if (cardId === "parcel") {
+      document.getElementById("gush").value  = "";
       document.getElementById("helka").value = "";
     } else {
-      document.getElementById("address").value = "";
+      document.getElementById("street").value = "";
+      document.getElementById("city").value   = "";
+      document.getElementById("candidates-address").style.display = "none";
+      document.getElementById("candidates-list").innerHTML = "";
     }
     const box = document.getElementById(`result-${cardId}`);
     box.style.display = "none";
@@ -285,95 +285,101 @@
     document.getElementById(`btn-${cardId}`).disabled = false;
   }
 
-  /* ── lookup parcel ─────────────────────────── */
+  /* ── lookup parcel ── */
   async function lookupParcel() {
-    const gush = document.getElementById("gush").value.trim();
+    const gush  = document.getElementById("gush").value.trim();
     const helka = document.getElementById("helka").value.trim();
-
     if (!gush || !helka) {
       showResult("result-parcel", '<span class="error-msg">יש להזין גוש וחלקה.</span>', true);
       return;
     }
-
     setLoading("parcel", true);
-    showResult("result-parcel", "", false);
     document.getElementById("result-parcel").style.display = "none";
-
     try {
       const resp = await fetch(`/api/lookup-parcel?gush=${encodeURIComponent(gush)}&helka=${encodeURIComponent(helka)}`);
       const data = await resp.json();
       setLoading("parcel", false);
-
-      if (!resp.ok) {
-        showResult("result-parcel", `<span class="error-msg">${data.error}</span>`, true);
-        return;
-      }
-
-      let html = "";
-      html += row("שם יישוב", data.locality, true);
-      html += row("מרחב תכנון (ועדה מקומית)", data.planning_zone, true);
-      html += row("סוג מרחב", data.planning_zone_type);
-      html += row("רשות מקומית", data.municipality);
-      html += row("סוג רשות", data.municipality_type);
-      html += row("מחוז", data.district);
-      html += row("נפה", data.subdistrict);
-      html += row("מחוז קרקע", data.county);
-      html += row("גוש", data.gush);
-      html += row("חלקה", data.helka);
-      html += row("סטטוס", data.status);
-      html += row("שטח רשום (מ\"ר)", data.area);
-
-      showResult("result-parcel", html);
-    } catch (e) {
+      if (!resp.ok) { showResult("result-parcel", `<span class="error-msg">${data.error}</span>`, true); return; }
+      showResult("result-parcel", buildResultHtml(data, false));
+    } catch(e) {
       setLoading("parcel", false);
       showResult("result-parcel", `<span class="error-msg">שגיאת רשת: ${e.message}</span>`, true);
     }
   }
 
-  /* ── lookup address ────────────────────────── */
-  async function lookupAddress() {
-    const address = document.getElementById("address").value.trim();
-
-    if (!address) {
-      showResult("result-address", '<span class="error-msg">יש להזין כתובת.</span>', true);
+  /* ── address search — step 1: geocode ── */
+  async function searchAddress() {
+    const street = document.getElementById("street").value.trim();
+    const city   = document.getElementById("city").value.trim();
+    if (!street && !city) {
+      showResult("result-address", '<span class="error-msg">יש להזין רחוב או עיר.</span>', true);
       return;
     }
 
     setLoading("address", true);
     document.getElementById("result-address").style.display = "none";
+    document.getElementById("candidates-address").style.display = "none";
 
     try {
-      const resp = await fetch(`/api/lookup-address?address=${encodeURIComponent(address)}`);
+      const params = new URLSearchParams();
+      if (street) params.set("street", street);
+      if (city)   params.set("city",   city);
+
+      const resp = await fetch(`/api/geocode?${params}`);
       const data = await resp.json();
       setLoading("address", false);
 
+      if (!resp.ok) { showResult("result-address", `<span class="error-msg">${data.error}</span>`, true); return; }
+
+      const candidates = data.candidates || [];
+
+      if (candidates.length === 1) {
+        // רק תוצאה אחת — נמשיך ישירות
+        await lookupParcelByCoords(candidates[0].lat, candidates[0].lon, candidates[0].label);
+      } else {
+        // מספר תוצאות — נציג לבחירה
+        showCandidates(candidates);
+      }
+    } catch(e) {
+      setLoading("address", false);
+      showResult("result-address", `<span class="error-msg">שגיאת רשת: ${e.message}</span>`, true);
+    }
+  }
+
+  function showCandidates(candidates) {
+    const list = document.getElementById("candidates-list");
+    list.innerHTML = "";
+    candidates.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "candidate-item";
+      div.innerHTML = `<div class="c-label">${c.label}</div><div class="c-detail">${c.display_name}</div>`;
+      div.onclick = async () => {
+        document.getElementById("candidates-address").style.display = "none";
+        setLoading("address", true);
+        await lookupParcelByCoords(c.lat, c.lon, c.label);
+      };
+      list.appendChild(div);
+    });
+    document.getElementById("candidates-address").style.display = "block";
+  }
+
+  /* ── address search — step 2: find parcel ── */
+  async function lookupParcelByCoords(lat, lon, display) {
+    setLoading("address", true);
+    document.getElementById("result-address").style.display = "none";
+    try {
+      const params = new URLSearchParams({ lat, lon, display });
+      const resp = await fetch(`/api/lookup-address?${params}`);
+      const data = await resp.json();
+      setLoading("address", false);
       if (!resp.ok) {
         let msg = `<span class="error-msg">${data.error}</span>`;
-        if (data.geocoded_address) {
-          msg += `<br/><small>כתובת שאותרה: ${data.geocoded_address}</small>`;
-        }
+        if (data.geocoded_address) msg += `<br/><small>${data.geocoded_address}</small>`;
         showResult("result-address", msg, true);
         return;
       }
-
-      let html = "";
-      html += row("גוש", data.gush, true);
-      html += row("חלקה", data.helka, true);
-      html += row("שם יישוב", data.locality);
-      html += row("מרחב תכנון (ועדה מקומית)", data.planning_zone);
-      html += row("סוג מרחב", data.planning_zone_type);
-      html += row("רשות מקומית", data.municipality);
-      html += row("סוג רשות", data.municipality_type);
-      html += row("מחוז", data.district);
-      html += row("נפה", data.subdistrict);
-      html += row("סטטוס", data.status);
-      html += row("שטח רשום (מ\"ר)", data.area);
-      if (data.geocoded_address) {
-        html += row("כתובת שנמצאה", data.geocoded_address);
-      }
-
-      showResult("result-address", html);
-    } catch (e) {
+      showResult("result-address", buildResultHtml(data, true));
+    } catch(e) {
       setLoading("address", false);
       showResult("result-address", `<span class="error-msg">שגיאת רשת: ${e.message}</span>`, true);
     }
