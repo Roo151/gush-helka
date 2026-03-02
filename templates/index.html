@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>חיפוש גוש וחלקה</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ── Page header ──────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 32px 16px 24px;
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1a4f8a;
+      margin-bottom: 6px;
+    }
+    header p {
+      font-size: 1rem;
+      color: #555;
+    }
+
+    /* ── Layout ───────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ─────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .card h2 {
+      font-size: 1.2rem;
+      color: #1a4f8a;
+      border-bottom: 2px solid #e3eaf5;
+      padding-bottom: 10px;
+    }
+
+    /* ── Form controls ────────────────────────────── */
+    .form-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    label {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 5px;
+    }
+    input[type="text"],
+    input[type="number"] {
+      border: 1.5px solid #c8d8ea;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: .95rem;
+      font-family: inherit;
+      color: #1a1a2e;
+      direction: ltr;
+      text-align: right;
+      transition: border-color .2s;
+      width: 100%;
+    }
+    input[type="text"] { direction: rtl; text-align: right; }
+    input:focus { outline: none; border-color: #1a4f8a; }
+
+    button {
+      padding: 10px 22px;
+      background: #1a4f8a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: .95rem;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    button:hover { background: #1563b0; }
+    button:disabled { background: #8aaccc; cursor: not-allowed; }
+
+    button.btn-clear {
+      background: #e8eef5;
+      color: #555;
+      padding: 10px 14px;
+    }
+    button.btn-clear:hover { background: #d0dcea; color: #222; }
+
+    /* ── Spinner ──────────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 24px; height: 24px;
+      border: 3px solid #c8d8ea;
+      border-top-color: #1a4f8a;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result box ───────────────────────────────── */
+    .result-box {
+      display: none;
+      background: #f0f7ff;
+      border: 1.5px solid #c8d8ea;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .result-box.error {
+      background: #fff5f5;
+      border-color: #f5c6c6;
+    }
+    .result-box .error-msg {
+      color: #c0392b;
+      font-weight: 600;
+    }
+    .result-row {
+      display: flex;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #dde8f5;
+      font-size: .92rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-label {
+      font-weight: 700;
+      color: #1a4f8a;
+      min-width: 180px;
+    }
+    .result-value { color: #222; }
+    .result-value.highlight {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .committee-note {
+      font-size: .8rem;
+      color: #777;
+      margin-top: 6px;
+      border-top: 1px dashed #c8d8ea;
+      padding-top: 6px;
+    }
+
+    /* ── Data source note ─────────────────────────── */
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: .8rem;
+      color: #888;
+    }
+    footer a { color: #1a4f8a; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏠 חיפוש גוש וחלקה</h1>
+  <p>מידע מקרקעין ישראל — חיפוש גוש/חלקה לפי כתובת ולהפך</p>
+</header>
+
+<main class="grid">
+
+  <!-- ── Card 1: גוש + חלקה → יישוב + ועדה ── -->
+  <div class="card">
+    <h2>🔍 חיפוש לפי גוש וחלקה</h2>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="gush">מספר גוש</label>
+        <input id="gush" type="number" min="1" placeholder="לדוג׳ 7100" />
+      </div>
+      <div class="field">
+        <label for="helka">מספר חלקה</label>
+        <input id="helka" type="number" min="1" placeholder="לדוג׳ 1" />
+      </div>
+      <button id="btn-parcel" onclick="lookupParcel()">חפש</button>
+      <button class="btn-clear" onclick="clearCard('parcel')" title="נקה">✕</button>
+    </div>
+
+    <div class="spinner" id="spin-parcel"></div>
+
+    <div class="result-box" id="result-parcel"></div>
+  </div>
+
+  <!-- ── Card 2: כתובת → גוש + חלקה ── -->
+  <div class="card">
+    <h2>📍 חיפוש לפי כתובת</h2>
+
+    <div class="form-row" style="flex-wrap:wrap;">
+      <div class="field" style="flex:1 1 100%;">
+        <label for="address">כתובת (רחוב, מספר, עיר)</label>
+        <input
+          id="address"
+          type="text"
+          placeholder="לדוג׳: רוטשילד 1, תל אביב"
+          onkeydown="if(event.key==='Enter') lookupAddress()"
+        />
+      </div>
+      <button id="btn-address" onclick="lookupAddress()" style="margin-top:6px;">חפש</button>
+      <button class="btn-clear" onclick="clearCard('address')" style="margin-top:6px;" title="נקה">✕</button>
+    </div>
+
+    <div class="spinner" id="spin-address"></div>
+
+    <div class="result-box" id="result-address"></div>
+  </div>
+
+</main>
+
+<footer>
+  מקורות: <a href="https://open.govmap.gov.il" target="_blank">GovMap Open Data</a>
+  (שירות הסקר הגיאוגרפי של ישראל) &nbsp;|&nbsp;
+  <a href="https://nominatim.openstreetmap.org" target="_blank">Nominatim / OpenStreetMap</a>
+  <br/>
+  נתוני ועדות תכנון מתבססים על שם הרשות המקומית — לאישור מדויק ראי
+  <a href="https://www.mavat.moin.gov.il" target="_blank">מאבת</a>
+</footer>
+
+<script>
+  /* ── helpers ────────────────────────────────── */
+  function setLoading(cardId, on) {
+    const btn = document.getElementById(`btn-${cardId}`);
+    const spin = document.getElementById(`spin-${cardId}`);
+    btn.disabled = on;
+    spin.style.display = on ? "block" : "none";
+  }
+
+  function row(label, value, highlight = false) {
+    if (!value && value !== 0) return "";
+    return `<div class="result-row">
+      <span class="result-label">${label}</span>
+      <span class="result-value${highlight ? " highlight" : ""}">${value}</span>
+    </div>`;
+  }
+
+  function showResult(boxId, html, isError = false) {
+    const box = document.getElementById(boxId);
+    box.style.display = "block";
+    box.className = "result-box" + (isError ? " error" : "");
+    box.innerHTML = html;
+  }
+
+  /* ── clear card ────────────────────────────── */
+  function clearCard(cardId) {
+    if (cardId === 'parcel') {
+      document.getElementById("gush").value = "";
+      document.getElementById("helka").value = "";
+    } else {
+      document.getElementById("address").value = "";
+    }
+    const box = document.getElementById(`result-${cardId}`);
+    box.style.display = "none";
+    box.innerHTML = "";
+    document.getElementById(`spin-${cardId}`).style.display = "none";
+    document.getElementById(`btn-${cardId}`).disabled = false;
+  }
+
+  /* ── lookup parcel ─────────────────────────── */
+  async function lookupParcel() {
+    const gush = document.getElementById("gush").value.trim();
+    const helka = document.getElementById("helka").value.trim();
+
+    if (!gush || !helka) {
+      showResult("result-parcel", '<span class="error-msg">יש להזין גוש וחלקה.</span>', true);
+      return;
+    }
+
+    setLoading("parcel", true);
+    showResult("result-parcel", "", false);
+    document.getElementById("result-parcel").style.display = "none";
+
+    try {
+      const resp = await fetch(`/api/lookup-parcel?gush=${encodeURIComponent(gush)}&helka=${encodeURIComponent(helka)}`);
+      const data = await resp.json();
+      setLoading("parcel", false);
+
+      if (!resp.ok) {
+        showResult("result-parcel", `<span class="error-msg">${data.error}</span>`, true);
+        return;
+      }
+
+      let html = "";
+      html += row("שם יישוב", data.locality, true);
+      html += row("מרחב תכנון (ועדה מקומית)", data.planning_zone, true);
+      html += row("סוג מרחב", data.planning_zone_type);
+      html += row("רשות מקומית", data.municipality);
+      html += row("סוג רשות", data.municipality_type);
+      html += row("מחוז", data.district);
+      html += row("נפה", data.subdistrict);
+      html += row("מחוז קרקע", data.county);
+      html += row("גוש", data.gush);
+      html += row("חלקה", data.helka);
+      html += row("סטטוס", data.status);
+      html += row("שטח רשום (מ\"ר)", data.area);
+
+      showResult("result-parcel", html);
+    } catch (e) {
+      setLoading("parcel", false);
+      showResult("result-parcel", `<span class="error-msg">שגיאת רשת: ${e.message}</span>`, true);
+    }
+  }
+
+  /* ── lookup address ────────────────────────── */
+  async function lookupAddress() {
+    const address = document.getElementById("address").value.trim();
+
+    if (!address) {
+      showResult("result-address", '<span class="error-msg">יש להזין כתובת.</span>', true);
+      return;
+    }
+
+    setLoading("address", true);
+    document.getElementById("result-address").style.display = "none";
+
+    try {
+      const resp = await fetch(`/api/lookup-address?address=${encodeURIComponent(address)}`);
+      const data = await resp.json();
+      setLoading("address", false);
+
+      if (!resp.ok) {
+        let msg = `<span class="error-msg">${data.error}</span>`;
+        if (data.geocoded_address) {
+          msg += `<br/><small>כתובת שאותרה: ${data.geocoded_address}</small>`;
+        }
+        showResult("result-address", msg, true);
+        return;
+      }
+
+      let html = "";
+      html += row("גוש", data.gush, true);
+      html += row("חלקה", data.helka, true);
+      html += row("שם יישוב", data.locality);
+      html += row("מרחב תכנון (ועדה מקומית)", data.planning_zone);
+      html += row("סוג מרחב", data.planning_zone_type);
+      html += row("רשות מקומית", data.municipality);
+      html += row("סוג רשות", data.municipality_type);
+      html += row("מחוז", data.district);
+      html += row("נפה", data.subdistrict);
+      html += row("סטטוס", data.status);
+      html += row("שטח רשום (מ\"ר)", data.area);
+      if (data.geocoded_address) {
+        html += row("כתובת שנמצאה", data.geocoded_address);
+      }
+
+      showResult("result-address", html);
+    } catch (e) {
+      setLoading("address", false);
+      showResult("result-address", `<span class="error-msg">שגיאת רשת: ${e.message}</span>`, true);
+    }
+  }
+</script>
+
+</body>
+</html>
