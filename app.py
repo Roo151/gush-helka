@@ -1,6 +1,7 @@
 import math
 import logging
 import ssl
+import os
 
 import urllib3
 import requests
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 WFS_BASE       = "https://open.govmap.gov.il/geoserver/opendata/wfs"
-GOVMAP_GEOCODE = "https://wms.govmap.gov.il/tachles/addresssearch.aspx"
+OPENCAGE_BASE  = "https://api.opencagedata.com/geocode/v1/json"
+OPENCAGE_KEY   = os.environ.get("OPENCAGE_API_KEY", "")
 IPLAN_BASE     = "https://ags.iplan.gov.il/arcgisiplan/rest/services/PlanningPublic/gvulot_retzef/MapServer"
 
 
@@ -243,13 +245,19 @@ def geocode():
 
     try:
         resp = requests.get(
-            GOVMAP_GEOCODE,
-            params={"keys": query, "lang": 0, "type": 1},
-            headers={"Referer": "https://www.govmap.gov.il/"},
+            OPENCAGE_BASE,
+            params={
+                "q":           f"{query}, ישראל",
+                "key":         OPENCAGE_KEY,
+                "language":    "he",
+                "countrycode": "il",
+                "limit":       5,
+                "no_annotations": 1,
+            },
             timeout=12,
         )
         resp.raise_for_status()
-        results = resp.json()
+        results = resp.json().get("results", [])
     except Exception as exc:
         return jsonify({"error": f"שגיאה בחיפוש הכתובת: {exc}"}), 502
 
@@ -257,21 +265,20 @@ def geocode():
         return jsonify({"error": f"לא נמצאה כתובת: {query}"}), 404
 
     candidates = []
-    for r in results[:5]:
-        try:
-            itm_x = float(r.get("X") or r.get("x") or 0)
-            itm_y = float(r.get("Y") or r.get("y") or 0)
-            if not itm_x or not itm_y:
-                continue
-            lon_r, lat_r = itm_to_wgs84(itm_x, itm_y)
-        except Exception:
-            continue
-        label = r.get("ResultLable") or r.get("ResultLabel") or query
+    for r in results:
+        comp = r.get("components", {})
+        parts = []
+        if comp.get("road"):         parts.append(comp["road"])
+        if comp.get("house_number"): parts.append(comp["house_number"])
+        city = comp.get("city") or comp.get("town") or comp.get("village") or ""
+        if city: parts.append(city)
+        label = ", ".join(parts) if parts else r.get("formatted", query)
+        geo = r.get("geometry", {})
         candidates.append({
             "label":        label,
             "display_name": label,
-            "lat":          lat_r,
-            "lon":          lon_r,
+            "lat":          float(geo["lat"]),
+            "lon":          float(geo["lng"]),
         })
 
     return jsonify({"candidates": candidates})
