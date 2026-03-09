@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 WFS_BASE       = "https://open.govmap.gov.il/geoserver/opendata/wfs"
-PHOTON_BASE = "https://photon.komoot.io/api/"
+GOVMAP_GEOCODE = "https://wms.govmap.gov.il/tachles/addresssearch.aspx"
 IPLAN_BASE     = "https://ags.iplan.gov.il/arcgisiplan/rest/services/PlanningPublic/gvulot_retzef/MapServer"
 
 
@@ -34,6 +34,44 @@ _iplan_session.mount("https://", _LegacyTLSAdapter())
 
 
 # ── coordinate helpers ────────────────────────────────────────────────────────
+
+def itm_to_wgs84(x, y):
+    """Convert Israeli ITM (EPSG:2039) to WGS84 lon/lat (approximate)."""
+    # ITM false easting/northing and scale
+    a, f = 6378137.0, 1 / 298.257223563
+    b = a * (1 - f)
+    e2 = 1 - (b / a) ** 2
+    e = math.sqrt(e2)
+
+    k0 = 1.0000067
+    lon0 = math.radians(35.2045169444444)
+    lat0 = math.radians(31.7343936111111)
+    E0, N0 = 219529.584, 626907.390
+
+    X = x - E0
+    Y = y - N0
+
+    M0 = a * ((1 - e2/4 - 3*e2**2/64) * lat0
+              - (3*e2/8 + 3*e2**2/32) * math.sin(2*lat0)
+              + (15*e2**2/256) * math.sin(4*lat0))
+    M = M0 + Y / k0
+    mu = M / (a * (1 - e2/4 - 3*e2**2/64))
+    e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+    lat1 = (mu + (3*e1/2 - 27*e1**3/32) * math.sin(2*mu)
+            + (21*e1**2/16 - 55*e1**4/32) * math.sin(4*mu)
+            + (151*e1**3/96) * math.sin(6*mu))
+    N1 = a / math.sqrt(1 - e2 * math.sin(lat1)**2)
+    T1 = math.tan(lat1)**2
+    C1 = e2 / (1 - e2) * math.cos(lat1)**2
+    R1 = a * (1 - e2) / (1 - e2 * math.sin(lat1)**2)**1.5
+    D = X / (N1 * k0)
+
+    lat = lat1 - (N1 * math.tan(lat1) / R1) * (
+        D**2/2 - (5 + 3*T1 + 10*C1 - 4*C1**2 - 9*e2/(1-e2)) * D**4/24)
+    lon = lon0 + (D - (1 + 2*T1 + C1) * D**3/6) / math.cos(lat1)
+
+    return math.degrees(lon), math.degrees(lat)
+
 
 def wgs84_to_mercator(lon, lat):
     x = lon * 20037508.34 / 180
@@ -205,19 +243,13 @@ def geocode():
 
     try:
         resp = requests.get(
-            PHOTON_BASE,
-            params={
-                "q":    query,
-                "limit": 5,
-                "lang": "he",
-                # bounding box of Israel
-                "bbox": "34.2654,29.4533,35.8954,33.3356",
-            },
+            GOVMAP_GEOCODE,
+            params={"keys": query, "lang": 0, "type": 1},
+            headers={"Referer": "https://www.govmap.gov.il/"},
             timeout=12,
         )
         resp.raise_for_status()
-        data = resp.json()
-        results = data.get("features", [])
+        results = resp.json()
     except Exception as exc:
         return jsonify({"error": f"שגיאה בחיפוש הכתובת: {exc}"}), 502
 
@@ -225,24 +257,21 @@ def geocode():
         return jsonify({"error": f"לא נמצאה כתובת: {query}"}), 404
 
     candidates = []
-    for r in results:
-        props = r.get("properties", {})
-        coords = r.get("geometry", {}).get("coordinates", [None, None])
-        lon_r, lat_r = coords[0], coords[1]
-        if lon_r is None or lat_r is None:
+    for r in results[:5]:
+        try:
+            itm_x = float(r.get("X") or r.get("x") or 0)
+            itm_y = float(r.get("Y") or r.get("y") or 0)
+            if not itm_x or not itm_y:
+                continue
+            lon_r, lat_r = itm_to_wgs84(itm_x, itm_y)
+        except Exception:
             continue
-        parts = []
-        if props.get("street"):      parts.append(props["street"])
-        if props.get("housenumber"): parts.append(props["housenumber"])
-        if props.get("city") or props.get("town") or props.get("village"):
-            parts.append(props.get("city") or props.get("town") or props.get("village"))
-        label = ", ".join(parts) if parts else props.get("name", query)
-
+        label = r.get("ResultLable") or r.get("ResultLabel") or query
         candidates.append({
             "label":        label,
             "display_name": label,
-            "lat":          float(lat_r),
-            "lon":          float(lon_r),
+            "lat":          lat_r,
+            "lon":          lon_r,
         })
 
     return jsonify({"candidates": candidates})
