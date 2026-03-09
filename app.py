@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 WFS_BASE       = "https://open.govmap.gov.il/geoserver/opendata/wfs"
-NOMINATIM_BASE = "https://nominatim.openstreetmap.org/search"
+PHOTON_BASE = "https://photon.komoot.io/api/"
 IPLAN_BASE     = "https://ags.iplan.gov.il/arcgisiplan/rest/services/PlanningPublic/gvulot_retzef/MapServer"
 
 
@@ -205,20 +205,19 @@ def geocode():
 
     try:
         resp = requests.get(
-            NOMINATIM_BASE,
+            PHOTON_BASE,
             params={
-                "q":               f"{query}, ישראל",
-                "format":          "json",
-                "limit":           5,
-                "accept-language": "he,en",
-                "countrycodes":    "il",
-                "addressdetails":  1,
+                "q":    query,
+                "limit": 5,
+                "lang": "he",
+                # bounding box of Israel
+                "bbox": "34.2654,29.4533,35.8954,33.3356",
             },
-            headers={"User-Agent": "GushHelkaApp/1.0"},
             timeout=12,
         )
         resp.raise_for_status()
-        results = resp.json()
+        data = resp.json()
+        results = data.get("features", [])
     except Exception as exc:
         return jsonify({"error": f"שגיאה בחיפוש הכתובת: {exc}"}), 502
 
@@ -227,20 +226,23 @@ def geocode():
 
     candidates = []
     for r in results:
-        addr = r.get("address", {})
-        # Build a clean Hebrew display label
+        props = r.get("properties", {})
+        coords = r.get("geometry", {}).get("coordinates", [None, None])
+        lon_r, lat_r = coords[0], coords[1]
+        if lon_r is None or lat_r is None:
+            continue
         parts = []
-        if addr.get("road"):       parts.append(addr["road"])
-        if addr.get("house_number"): parts.append(addr["house_number"])
-        if addr.get("city") or addr.get("town") or addr.get("village"):
-            parts.append(addr.get("city") or addr.get("town") or addr.get("village"))
-        label = ", ".join(parts) if parts else r.get("display_name", "")
+        if props.get("street"):      parts.append(props["street"])
+        if props.get("housenumber"): parts.append(props["housenumber"])
+        if props.get("city") or props.get("town") or props.get("village"):
+            parts.append(props.get("city") or props.get("town") or props.get("village"))
+        label = ", ".join(parts) if parts else props.get("name", query)
 
         candidates.append({
             "label":        label,
-            "display_name": r.get("display_name", ""),
-            "lat":          float(r["lat"]),
-            "lon":          float(r["lon"]),
+            "display_name": label,
+            "lat":          float(lat_r),
+            "lon":          float(lon_r),
         })
 
     return jsonify({"candidates": candidates})
